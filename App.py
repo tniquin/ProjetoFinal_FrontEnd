@@ -1,14 +1,15 @@
 import flet as ft
 import requests
 
-BASE_URL = "http://192.168.1.83:5002"  # IP da sua API
+BASE_URL = "http://192.168.1.83:5002"
 
 
 def main(page: ft.Page):
     page.title = "SmartSell"
-    # Guarda token e user completo (incluindo id) na sessão
     page.session.set("token", None)
     page.session.set("user", None)
+    page.window.height = 800
+    page.window.width = 378
 
     def api_request(method, endpoint, data=None):
         headers = {}
@@ -27,9 +28,27 @@ def main(page: ft.Page):
 
     # ---------------- VIEWS ----------------
     def login_view():
-        email = ft.TextField(label="Email")
-        senha = ft.TextField(label="Senha", password=True, can_reveal_password=True)
+        email = ft.TextField(
+            label="EMAIL",
+            prefix_icon=ft.Icons.LOCK,
+            border_color=ft.Colors.AMBER,
+            border_radius=10,
+            focused_border_color=ft.Colors.AMBER,
+            width=300,
+            color = ft.Colors.BLACK
+        )
 
+        senha = ft.TextField(
+            label="SENHA",
+            prefix_icon=ft.Icons.PERSON,
+            password=True,
+            can_reveal_password=True,
+            border_color=ft.Colors.AMBER,
+            border_radius=10,
+            focused_border_color=ft.Colors.AMBER,
+            width=300,
+            color = ft.Colors.BLACK
+        )
         def do_login(e):
             status, res = api_request("POST", "/login", {
                 "email": email.value,
@@ -37,12 +56,10 @@ def main(page: ft.Page):
             })
             if status == 200:
                 page.session.set("token", res["access_token"])
-                # agora pedimos /me para obter id e demais infos
                 st, rme = api_request("GET", "/me")
                 if st == 200:
                     page.session.set("user", rme)
                 else:
-                    # se falhar, guarda pelo menos nome/email do login
                     page.session.set("user", {"nome": res.get("nome"), "email": email.value})
                 page.snack_bar = ft.SnackBar(ft.Text("Login realizado!"), open=True)
                 page.update()
@@ -53,20 +70,100 @@ def main(page: ft.Page):
 
         return ft.View(
             "/login",
+            bgcolor=ft.Colors.AMBER_50,
             controls=[
-                ft.AppBar(title=ft.Text("Login")),
-                ft.Column([email, senha, ft.ElevatedButton("Entrar", on_click=do_login),
-                           ft.TextButton("Não tem conta? Cadastre-se", on_click=lambda _: go_cadastro())],
-                          alignment="center", horizontal_alignment="center", width=400)
+                ft.Container(
+                    expand=True,
+                    alignment=ft.alignment.center,
+                    content=ft.Column(
+                        [
+                            ft.Icon(
+                                ft.Icons.ACCOUNT_CIRCLE,
+                                size=120,
+                                color=ft.Colors.RED
+                            ),
+                            email,
+                            senha,
+                            ft.ElevatedButton(
+                                "ENTRAR",
+                                on_click=do_login,
+                                bgcolor=ft.Colors.RED,
+                                color=ft.Colors.WHITE,
+                                style=ft.ButtonStyle(
+                                    shape=ft.RoundedRectangleBorder(radius=20),
+                                    padding=20
+                                ),
+                                width=150
+                            ),
+                            ft.Text(
+                                "NOVO USUÁRIO?\nENTÃO",
+                                size=14,
+                                weight="bold",
+                                text_align="center",
+                                color=ft.Colors.BLACK,
+                                spans=[
+                                    ft.TextSpan(
+                                        " CADASTRE-SE",
+                                        ft.TextStyle(color=ft.Colors.RED),
+                                        on_click=lambda _: go_cadastro()  # <<< aqui troca de rota
+                                    )
+                                ]
+                            ),
+                        ],
+                        alignment="center",
+                        horizontal_alignment="center",
+                        spacing=25
+                    )
+                )
             ]
         )
 
     def cadastro_view():
-        nome = ft.TextField(label="Nome")
-        telefone = ft.TextField(label="Telefone")
-        email = ft.TextField(label="Email")
-        senha = ft.TextField(label="Senha", password=True, can_reveal_password=True)
+        nome = ft.TextField(
+            label="NOME",
+            label_style=ft.TextStyle( weight="bold"),
+            prefix_icon=ft.Icons.PERSON,
+            border_color=ft.Colors.AMBER,
+            border_radius=10,
+            focused_border_color=ft.Colors.AMBER,
+            color=ft.Colors.BLACK,
+            width=300
+        )
 
+        email = ft.TextField(
+            label="EMAIL",
+            label_style=ft.TextStyle( weight="bold"),
+            prefix_icon=ft.Icons.LOCK,
+            border_color=ft.Colors.AMBER,
+            border_radius=10,
+            focused_border_color=ft.Colors.AMBER,
+            color=ft.Colors.BLACK,
+            width=300
+        )
+
+        telefone = ft.TextField(
+            label="TELEFONE",
+            label_style=ft.TextStyle( weight="bold"),
+            prefix_icon=ft.Icons.PHONE,
+            border_color=ft.Colors.AMBER,
+            border_radius=10,
+            focused_border_color=ft.Colors.AMBER,
+            color=ft.Colors.BLACK,
+            width=300
+        )
+
+        senha = ft.TextField(
+            label="SENHA",
+            label_style=ft.TextStyle( weight="bold"),
+            prefix_icon=ft.Icons.LOCK,
+            password=True,
+            can_reveal_password=True,
+            border_color=ft.Colors.AMBER,
+            border_radius=10,
+            focused_border_color=ft.Colors.AMBER,
+            color=ft.Colors.BLACK,
+            width=300
+        )
         def do_cadastro(e):
             status, res = api_request("POST", "/cadastro/usuario", {
                 "nome": nome.value,
@@ -84,14 +181,61 @@ def main(page: ft.Page):
 
         return ft.View(
             "/cadastro",
+            bgcolor=ft.Colors.AMBER_50,
             controls=[
-                ft.AppBar(title=ft.Text("Cadastro")),
-                ft.Column([nome, telefone, email, senha, ft.ElevatedButton("Cadastrar", on_click=do_cadastro),
-                           ft.TextButton("Já tem conta? Login", on_click=lambda _: go_login())],
-                          alignment="center", horizontal_alignment="center", width=500)
+                ft.Container(
+                    expand=True,
+                    alignment=ft.alignment.center,
+                    content=ft.Column(
+                        [
+                            # Ícone topo
+                            ft.Icon(
+                                ft.Icons.ACCOUNT_CIRCLE,
+                                size=120,
+                                color=ft.Colors.RED
+                            ),
+
+                            # Campos
+                            nome,
+                            email,
+                            telefone,
+                            senha,
+
+                            # Texto "já tem uma conta? entre agora"
+                            ft.Text(
+                                spans=[
+                                    ft.TextSpan("JÁ TEM UMA CONTA?",
+                                                ft.TextStyle(color=ft.Colors.BLACK, weight="bold")),
+                                    ft.TextSpan(" "),
+                                    ft.TextSpan(
+                                        "ENTRE AGORA",
+                                        ft.TextStyle(color=ft.Colors.RED, weight="bold"),
+                                        on_click=lambda _: go_login()
+                                    )
+                                ],
+                                text_align="center"
+                            ),
+
+                            # Botão Criar
+                            ft.ElevatedButton(
+                                "CRIAR",
+                                on_click=do_cadastro,
+                                bgcolor=ft.Colors.RED,
+                                color=ft.Colors.WHITE,
+                                style=ft.ButtonStyle(
+                                    shape=ft.RoundedRectangleBorder(radius=20),
+                                    padding=20
+                                ),
+                                width=150
+                            ),
+                        ],
+                        alignment="center",
+                        horizontal_alignment="center",
+                        spacing=20
+                    )
+                )
             ]
         )
-
     def menu_view():
         user = page.session.get("user") or {}
         bem = f"Bem-vindo, {user.get('nome','Usuário')}!"
