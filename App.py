@@ -2,6 +2,7 @@ import flet as ft
 import requests
 from datetime import datetime, timezone
 import pytz
+import asyncio
 
 BASE_URL = "http://192.168.1.83:5002"
 
@@ -14,8 +15,10 @@ def main(page: ft.Page):
     page.title = "SmartSell"
     page.session.set("token", None)
     page.session.set("user", None)
-    page.window.height = 800
-    page.window.width = 378
+    page.theme_mode = "light"
+    page.window.height = 900
+    page.window.width = 440
+
 
     def api_request(method, endpoint, data=None):
         headers = {}
@@ -33,10 +36,44 @@ def main(page: ft.Page):
             return 0, {"msg": f"Erro de conexão: {e}"}
 
     # ---------------- VIEWS ----------------
-    def login_view():
-        email = ft.TextField(label="Email")
-        senha = ft.TextField(label="Senha", password=True, can_reveal_password=True)
 
+    def login_view(page, go_cardapio, go_cadastro, api_request):
+        # === Cores principais ===
+        PRIMARY = "#FFD54F"  # amarelo claro
+        ACCENT = "#FF9800"  # laranja
+        TEXT = "#212121"  # preto suave
+        BG = "#FFFFFF"  # branco
+        GREY = "#E0E0E0"  # cinza leve
+        ERROR = "#E53935"  # vermelho para erros
+        INPUT_BG = "#FAFAFA"
+
+        # === Campos de login ===
+        email = ft.TextField(
+            label="Email",
+            border_color=GREY,
+            color=TEXT,
+            border_radius=12,
+            width=300,
+            bgcolor=INPUT_BG,
+            focused_border_color=PRIMARY,
+            label_style=ft.TextStyle(color="#757575")
+        )
+        senha = ft.TextField(
+            label="Senha",
+            password=True,
+            can_reveal_password=True,
+            border_color=GREY,
+            color=TEXT,
+            border_radius=12,
+            width=300,
+            bgcolor=INPUT_BG,
+            focused_border_color=PRIMARY,
+            label_style=ft.TextStyle(color="#757575")
+        )
+
+        mensagem = ft.Text("", color=ERROR, size=12)
+
+        # === Função de login ===
         def do_login(e):
             status, res = api_request("POST", "/login", {
                 "email": email.value,
@@ -50,33 +87,143 @@ def main(page: ft.Page):
                 else:
                     page.session.set("user", {"nome": res.get("nome"), "email": email.value})
                 page.update()
-                go_menu()
+                go_cardapio()
             else:
+                mensagem.value = "Email ou senha incorretos."
                 page.update()
 
+        # === Botão estilizado com hover ===
+        login_button = ft.ElevatedButton(
+            "Entrar",
+            on_click=do_login,
+            style=ft.ButtonStyle(
+                bgcolor=PRIMARY,
+                color=TEXT,
+                overlay_color=ACCENT,
+                shape=ft.RoundedRectangleBorder(radius=12),
+                padding=ft.Padding(16, 0, 16, 0),
+                text_style=ft.TextStyle(weight="bold"),
+            ),
+            width=300,
+        )
+
+        # === Cartão de Login com gradiente sutil e sombra ===
+        card_login = ft.Container(
+            width=360,
+            padding=40,
+            border_radius=24,
+            bgcolor=BG,
+            gradient=ft.LinearGradient(
+                begin=ft.alignment.top_left,
+                end=ft.alignment.bottom_right,
+                colors=[BG, "#FFF8E1"]
+            ),
+            shadow=ft.BoxShadow(
+                color="#00000020",
+                blur_radius=30,
+                offset=ft.Offset(0, 10)
+            ),
+            content=ft.Column(
+                [
+                    ft.Text("Bem-vindo 👋", size=24, weight="bold", color=TEXT),
+                    ft.Text("Entre com sua conta para continuar", size=14, color="#757575"),
+                    ft.Divider(height=20, color="transparent"),
+
+                    email,
+                    senha,
+                    mensagem,
+                    login_button,
+                    ft.TextButton(
+                        "Cadastrar-se",
+                        on_click=lambda _: go_cadastro(),
+                        style=ft.ButtonStyle(
+                            color=ACCENT,
+                            overlay_color="#FFE0B2"
+                        ),
+                    ),
+                ],
+                alignment="center",
+                horizontal_alignment="center",
+                spacing=14
+            )
+        )
+
+        # === Layout central ===
         return ft.View(
             "/login",
+            bgcolor=BG,
+            horizontal_alignment="center",
+            vertical_alignment="center",
             controls=[
                 ft.Column(
                     [
-                        email,
-                        senha,
-                        ft.ElevatedButton("Entrar", on_click=do_login),
-                        ft.TextButton("Cadastrar-se", on_click=lambda _: go_cadastro()),
+                        card_login,
+                        ft.Text("© 2025 SanctusPanis", size=11, color="#9E9E9E"),
                     ],
                     alignment="center",
                     horizontal_alignment="center",
-                    expand=True
+                    spacing=20
                 )
             ]
         )
 
-    def cadastro_view():
-        nome = ft.TextField(label="Nome")
-        email = ft.TextField(label="Email")
-        telefone = ft.TextField(label="Telefone")
-        senha = ft.TextField(label="Senha", password=True, can_reveal_password=True)
+    def cadastro_view(page, go_login, api_request):
+        # === Cores principais ===
+        PRIMARY = "#FFD54F"  # amarelo claro
+        ACCENT = "#FF9800"  # laranja
+        TEXT = "#212121"  # preto suave
+        BG = "#FFFFFF"  # branco
+        GREY = "#E0E0E0"  # cinza leve
+        ERROR = "#E53935"  # vermelho
+        INPUT_BG = "#FAFAFA"
 
+        # === Campos de cadastro ===
+        nome = ft.TextField(
+            label="Nome",
+            border_color=GREY,
+            color=TEXT,
+            border_radius=12,
+            width=300,
+            bgcolor=INPUT_BG,
+            focused_border_color=PRIMARY,
+            label_style=ft.TextStyle(color="#757575")
+        )
+        email = ft.TextField(
+            label="Email",
+            border_color=GREY,
+            color=TEXT,
+            border_radius=12,
+            width=300,
+            bgcolor=INPUT_BG,
+            focused_border_color=PRIMARY,
+            label_style=ft.TextStyle(color="#757575")
+        )
+        telefone = ft.TextField(
+            label="Telefone",
+            border_color=GREY,
+            color=TEXT,
+            border_radius=12,
+            width=300,
+            bgcolor=INPUT_BG,
+            focused_border_color=PRIMARY,
+            label_style=ft.TextStyle(color="#757575")
+        )
+        senha = ft.TextField(
+            label="Senha",
+            password=True,
+            can_reveal_password=True,
+            border_color=GREY,
+            color=TEXT,
+            border_radius=12,
+            width=300,
+            bgcolor=INPUT_BG,
+            focused_border_color=PRIMARY,
+            label_style=ft.TextStyle(color="#757575")
+        )
+
+        mensagem = ft.Text("", color=ERROR, size=12)
+
+        # === Função de cadastro ===
         def do_cadastro(e):
             try:
                 status, res = api_request("POST", "/usuario/cadastro", {
@@ -85,37 +232,92 @@ def main(page: ft.Page):
                     "email": email.value,
                     "senha": senha.value
                 })
-
-                print("🔍 Resposta da API:", status, res)  # Log completo
+                print("🔍 Resposta da API:", status, res)
 
                 if status == 201:
                     go_login()
                 else:
-                    # Mostra mensagem de erro na tela
-                    page.snack_bar = ft.SnackBar(ft.Text(f"Erro no cadastro: {res}"), open=True)
+                    mensagem.value = f"Erro no cadastro: {res}"
                     page.update()
 
             except Exception as err:
-                # Captura erro inesperado
                 print("❌ Erro inesperado no cadastro:", err)
-                page.snack_bar = ft.SnackBar(ft.Text(f"Erro interno: {err}"), open=True)
+                mensagem.value = f"Erro interno: {err}"
                 page.update()
 
+        # === Botão estilizado ===
+        cadastro_button = ft.ElevatedButton(
+            "Criar Conta",
+            on_click=do_cadastro,
+            style=ft.ButtonStyle(
+                bgcolor=PRIMARY,
+                color=TEXT,
+                overlay_color=ACCENT,
+                shape=ft.RoundedRectangleBorder(radius=12),
+                padding=ft.Padding(16, 0, 16, 0),
+                text_style=ft.TextStyle(weight="bold"),
+            ),
+            width=300,
+        )
+
+        # === Card de Cadastro ===
+        card_cadastro = ft.Container(
+            width=380,
+            padding=40,
+            border_radius=24,
+            bgcolor=BG,
+            gradient=ft.LinearGradient(
+                begin=ft.alignment.top_left,
+                end=ft.alignment.bottom_right,
+                colors=[BG, "#FFF8E1"]
+            ),
+            shadow=ft.BoxShadow(
+                color="#00000020",
+                blur_radius=30,
+                offset=ft.Offset(0, 10)
+            ),
+            content=ft.Column(
+                [
+                    ft.Text("Criar Conta 📝", size=24, weight="bold", color=TEXT),
+                    ft.Text("Preencha os dados abaixo para se cadastrar", size=14, color="#757575"),
+                    ft.Divider(height=20, color="transparent"),
+
+                    nome,
+                    email,
+                    telefone,
+                    senha,
+                    mensagem,
+                    cadastro_button,
+                    ft.TextButton(
+                        "Já tem conta? Entrar",
+                        on_click=lambda _: go_login(),
+                        style=ft.ButtonStyle(
+                            color=ACCENT,
+                            overlay_color="#FFE0B2"
+                        ),
+                    ),
+                ],
+                alignment="center",
+                horizontal_alignment="center",
+                spacing=14
+            )
+        )
+
+        # === Layout central ===
         return ft.View(
             "/cadastro",
+            bgcolor=BG,
+            horizontal_alignment="center",
+            vertical_alignment="center",
             controls=[
                 ft.Column(
                     [
-                        nome,
-                        email,
-                        telefone,
-                        senha,
-                        ft.ElevatedButton("Criar Conta", on_click=do_cadastro),
-                        ft.TextButton("Já tem conta? Entrar", on_click=lambda _: go_login())
+                        card_cadastro,
+                        ft.Text("© 2025 SanctusPanis", size=11, color="#9E9E9E"),
                     ],
                     alignment="center",
                     horizontal_alignment="center",
-                    expand=True
+                    spacing=20
                 )
             ]
         )
@@ -151,7 +353,7 @@ def main(page: ft.Page):
         quantidades = {}
         current_cat = "TODOS"
 
-        # normaliza status e categoria
+        # Normalização de status e categoria
         def str_to_bool(val):
             if isinstance(val, bool):
                 return val
@@ -163,39 +365,37 @@ def main(page: ft.Page):
 
         for p in itens:
             p["status"] = str_to_bool(p.get("status", True))
-            cat = (p.get("categoria") or "").strip()
-            p["categoria"] = cat if cat else "OUTROS"
+            categoria = (p.get("categoria") or "").strip()
+            p["categoria"] = categoria if categoria else "OUTROS"
 
         algum_disponivel = any(p["status"] for p in itens)
 
-        # categorias dinâmicas (inclui todas as categorias presentes) + TODOS
-        categorias_set = sorted(set([p.get("categoria", "").upper() for p in itens if p.get("categoria") is not None]))
+        # Categorias dinâmicas (com TODOS sempre no início)
+        categorias_set = sorted({
+            p.get("categoria", "").upper() for p in itens if p.get("categoria") is not None
+        })
         categorias = ["TODOS"] + [c for c in categorias_set if c != "TODOS"]
 
-        # grid de produtos (2 por linha)
+        # Grid principal
         grid = ft.Column(
             scroll="auto",
             expand=True,
             alignment="center",
             horizontal_alignment="center",
-            spacing=15
+            spacing=15,
         )
+
+        # ===== Funções auxiliares =====
 
         def toggle_selecao(item, control):
             if not item["status"]:
                 return
             if item["id"] in selecionados:
                 selecionados.remove(item["id"])
-                try:
-                    control.border = ft.border.all(1, ft.Colors.GREY)
-                except:
-                    pass
+                control.border = ft.border.all(1, ft.Colors.GREY)
             else:
                 selecionados.add(item["id"])
-                try:
-                    control.border = ft.border.all(3, ft.Colors.BLUE)
-                except:
-                    pass
+                control.border = ft.border.all(3, ft.Colors.BLUE)
             page.update()
 
         def add_mais(item):
@@ -210,17 +410,14 @@ def main(page: ft.Page):
                     continue
                 if item["id"] in selecionados:
                     add_to_carrinho(item)
-                qtd = quantidades.get(item["id"], 0)
-                if qtd > 0:
-                    for _ in range(qtd):
-                        add_to_carrinho(item)
-
+                for _ in range(quantidades.get(item["id"], 0)):
+                    add_to_carrinho(item)
             selecionados.clear()
             quantidades.clear()
             page.update()
             go_carrinho()
 
-        # campo de busca (criado antes para ser usado dentro das funções)
+        # Campo de busca
         search_field = ft.TextField(
             hint_text="Pesquisar...",
             prefix_icon=ft.Icons.SEARCH,
@@ -230,7 +427,7 @@ def main(page: ft.Page):
             height=45,
         )
 
-        # função de exibição
+        # ===== Função de exibição principal =====
         def mostrar_categoria(cat):
             nonlocal current_cat
             current_cat = cat
@@ -238,167 +435,125 @@ def main(page: ft.Page):
 
             query = (search_field.value or "").strip().lower()
 
-            # se tem busca ativa → mostra só os produtos que combinem com a busca (ignora agrupamento)
+            def criar_card(produto):
+                """Gera um card de produto visualmente consistente."""
+                return ft.Card(
+                    content=ft.Container(
+                        content=ft.Column(
+                            [
+                                ft.Container(
+                                    bgcolor="#FFB84D",
+                                    height=70,
+                                    width=150,
+                                    border_radius=ft.border_radius.only(top_left=10, top_right=10),
+                                ),
+                                ft.Text(produto["nome"], weight="bold"),
+                                ft.Text(f"R$ {produto.get('preco', 0):.2f}", color=ft.Colors.GREEN),
+                                ft.IconButton(
+                                    icon=ft.Icons.ADD_CIRCLE,
+                                    icon_color="orange",
+                                    on_click=lambda e, item=produto: add_mais(item),
+                                ),
+                            ],
+                            alignment="center",
+                            horizontal_alignment="center",
+                            spacing=5,
+                        ),
+                        padding=10,
+                        border=ft.border.all(1, ft.Colors.GREY),
+                        border_radius=10,
+                        ink=True,
+                        on_click=lambda e, item=produto: toggle_selecao(item, e.control),
+                    ),
+                    width=150,
+                    height=180,
+                )
+
+            def render_linha(produtos):
+                linha = []
+                for p in produtos:
+                    linha.append(criar_card(p))
+                    if len(linha) == 2:
+                        grid.controls.append(ft.Row(linha, alignment="center", spacing=15))
+                        linha = []
+                if linha:
+                    grid.controls.append(ft.Row(linha, alignment="center", spacing=15))
+
+            # Busca
             if query:
                 encontrados = [p for p in itens if p.get("status", True) and query in p.get("nome", "").lower()]
                 if not encontrados:
                     grid.controls.append(ft.Text("Nenhum produto encontrado.", size=16))
                 else:
-                    linha = []
-                    for p in encontrados:
-                        children = [
-                            ft.Container(bgcolor="#FFB84D", height=70, width=150,
-                                         border_radius=ft.border_radius.only(top_left=10, top_right=10)),
-                            ft.Text(p["nome"], weight="bold"),
-                            ft.Text(f"R$ {p.get('preco', 0):.2f}", color=ft.Colors.GREEN),
-                            ft.IconButton(icon=ft.Icons.ADD_CIRCLE, icon_color="orange",
-                                          on_click=(lambda e, item=p: add_mais(item)))
-                        ]
-                        card = ft.Card(
-                            content=ft.Container(
-                                content=ft.Column(children, alignment="center", horizontal_alignment="center",
-                                                  spacing=5),
-                                padding=10,
-                                border=ft.border.all(1, ft.Colors.GREY),
-                                border_radius=10,
-                                ink=True,
-                                on_click=(lambda e, item=p: toggle_selecao(item, e.control))
-                            ),
-                            width=150,
-                            height=180
-                        )
-                        linha.append(card)
-                        if len(linha) == 2:
-                            grid.controls.append(ft.Row(linha, alignment="center", spacing=15))
-                            linha = []
-                    if linha:
-                        grid.controls.append(ft.Row(linha, alignment="center", spacing=15))
+                    render_linha(encontrados)
 
             else:
-                # TODOS: agrupa por categoria com ordem preferencial LANCHE -> DOCE -> BEBIDA -> outras
+                # Agrupamento e ordenação de categorias
                 if cat == "TODOS":
                     def category_sort_key(c):
-                        cu = c.upper()
-                        if "LANC" in cu: return (0, cu)
-                        if "DOCE" in cu: return (1, cu)
-                        if "BEB" in cu: return (2, cu)
-                        return (3, cu)
+                        c = c.upper()
+                        if "LANC" in c: return (0, c)
+                        if "DOCE" in c: return (1, c)
+                        if "BEB" in c:  return (2, c)
+                        return (3, c)
 
                     categorias_presentes = sorted(
-                        set([p.get("categoria", "").upper() for p in itens if p.get("status", True)]),
-                        key=category_sort_key)
+                        {p["categoria"].upper() for p in itens if p.get("status", True)},
+                        key=category_sort_key
+                    )
 
                     for categoria in categorias_presentes:
-                        produtos_cat = [p for p in itens if
-                                        p.get("status", True) and p.get("categoria", "").upper() == categoria]
+                        produtos_cat = [p for p in itens if p["status"] and p["categoria"].upper() == categoria]
                         if not produtos_cat:
                             continue
                         grid.controls.append(ft.Text(categoria, size=18, weight="bold"))
-                        linha = []
-                        for p in produtos_cat:
-                            children = [
-                                ft.Container(bgcolor="#FFB84D", height=70, width=150,
-                                             border_radius=ft.border_radius.only(top_left=10, top_right=10)),
-                                ft.Text(p["nome"], weight="bold"),
-                                ft.Text(f"R$ {p.get('preco', 0):.2f}", color=ft.Colors.GREEN),
-                                ft.IconButton(icon=ft.Icons.ADD_CIRCLE, icon_color="orange",
-                                              on_click=(lambda e, item=p: add_mais(item)))
-                            ]
-                            card = ft.Card(
-                                content=ft.Container(
-                                    content=ft.Column(children, alignment="center", horizontal_alignment="center",
-                                                      spacing=5),
-                                    padding=10,
-                                    border=ft.border.all(1, ft.Colors.GREY),
-                                    border_radius=10,
-                                    ink=True,
-                                    on_click=(lambda e, item=p: toggle_selecao(item, e.control))
-                                ),
-                                width=150,
-                                height=180
-                            )
-                            linha.append(card)
-                            if len(linha) == 2:
-                                grid.controls.append(ft.Row(linha, alignment="center", spacing=15))
-                                linha = []
-                        if linha:
-                            grid.controls.append(ft.Row(linha, alignment="center", spacing=15))
+                        render_linha(produtos_cat)
 
                 else:
-                    # categoria específica (2 por linha)
                     produtos = [p for p in itens if p.get("status", True) and p.get("categoria", "").upper() == cat]
                     if not produtos:
                         grid.controls.append(ft.Text("Nenhum produto nesta categoria.", size=16))
                     else:
-                        linha = []
-                        for p in produtos:
-                            children = [
-                                ft.Container(bgcolor="#FFB84D", height=70, width=150,
-                                             border_radius=ft.border_radius.only(top_left=10, top_right=10)),
-                                ft.Text(p["nome"], weight="bold"),
-                                ft.Text(f"R$ {p.get('preco', 0):.2f}", color=ft.Colors.GREEN),
-                                ft.IconButton(icon=ft.Icons.ADD_CIRCLE, icon_color="orange",
-                                              on_click=(lambda e, item=p: add_mais(item)))
-                            ]
-                            card = ft.Card(
-                                content=ft.Container(
-                                    content=ft.Column(children, alignment="center", horizontal_alignment="center",
-                                                      spacing=5),
-                                    padding=10,
-                                    border=ft.border.all(1, ft.Colors.GREY),
-                                    border_radius=10,
-                                    ink=True,
-                                    on_click=(lambda e, item=p: toggle_selecao(item, e.control))
-                                ),
-                                width=150,
-                                height=180
-                            )
-                            linha.append(card)
-                            if len(linha) == 2:
-                                grid.controls.append(ft.Row(linha, alignment="center", spacing=15))
-                                linha = []
-                        if linha:
-                            grid.controls.append(ft.Row(linha, alignment="center", spacing=15))
+                        render_linha(produtos)
 
             page.update()
 
-        # busca: dispara ao digitar / submeter
-        def on_search_change(e):
-            mostrar_categoria(current_cat)
+        # ===== Eventos =====
+        search_field.on_change = mostrar_categoria
+        search_field.on_submit = mostrar_categoria
 
-        search_field.on_change = on_search_change
-        search_field.on_submit = on_search_change
-
-        # topo com busca + ícones
+        # Topo com busca + ícones
         topo = ft.Container(
             content=ft.Row(
                 [
                     search_field,
-                    ft.IconButton(icon=ft.Icons.ACCOUNT_CIRCLE, icon_size=30),
-                    ft.IconButton(icon=ft.Icons.SETTINGS, icon_size=30, on_click=lambda _: go_configs()),
+                    ft.IconButton(icon=ft.Icons.ACCOUNT_CIRCLE, icon_size=30, on_click=lambda _: go_editar_usuario()),
+
                 ],
                 alignment="spaceBetween",
                 vertical_alignment="center",
-                spacing=10
+                spacing=10,
             ),
             border=ft.border.only(bottom=ft.BorderSide(1, "grey")),
-            padding=10
+            padding=10,
         )
 
-        # botões de categoria (dinâmicos)
-        cat_buttons = []
-        for c in categorias:
-            cat_buttons.append(
-                ft.ElevatedButton(
-                    c,
-                    bgcolor="#FFD54F",
-                    color="black",
-                    style=ft.ButtonStyle(shape=ft.RoundedRectangleBorder(radius=20), padding=15),
-                    on_click=lambda e, cat=c: mostrar_categoria(cat)
-                )
+        # Botões de categoria
+        cat_buttons = [
+            ft.ElevatedButton(
+                c,
+                bgcolor="#FFD54F",
+                color="black",
+                style=ft.ButtonStyle(
+                    shape=ft.RoundedRectangleBorder(radius=20),
+                    padding=15,
+                ),
+                on_click=lambda e, cat=c: mostrar_categoria(cat),
             )
+            for c in categorias
+        ]
 
-        # render inicial → TODOS
+        # Render inicial
         mostrar_categoria("TODOS")
 
         return ft.View(
@@ -414,20 +569,23 @@ def main(page: ft.Page):
                             icon=ft.Icons.SHOPPING_CART,
                             bgcolor="#FFD54F",
                             color="black",
-                            style=ft.ButtonStyle(shape=ft.RoundedRectangleBorder(radius=25), padding=20),
+                            style=ft.ButtonStyle(
+                                shape=ft.RoundedRectangleBorder(radius=25),
+                                padding=20,
+                            ),
                             on_click=add_carrinho,
                             expand=True,
-                            disabled=not algum_disponivel
+                            disabled=not algum_disponivel,
                         ),
                     ],
                     spacing=10,
-                    alignment="center"
-                )
+                    alignment="center",
+
+                ),
+
             ],
-            vertical_alignment="start"
+            vertical_alignment="start",
         )
-
-
 
     def add_to_carrinho(item: dict) -> None:
         """Adiciona um item ao carrinho da sessão, somando a quantidade se já existir."""
@@ -642,6 +800,8 @@ def main(page: ft.Page):
         st, res = api_request("GET", "/pedidos/logado")
         pedidos = res.get("pedidos", []) if st == 200 else []
 
+        last_route = page.session.get("last_route") or "/perfil_view"
+
         def formatar_data_display(data_str):
             """Retorna a data formatada bonitinha para exibir no card."""
             try:
@@ -739,45 +899,365 @@ def main(page: ft.Page):
                     scroll="auto",
                     expand=True,
                 ),
-                ft.Container(
-                    alignment=ft.alignment.center,
-                    padding=10,
-                    content=ft.IconButton(
-                        icon=ft.Icons.ARROW_BACK,
-                        icon_color=ft.Colors.BLACK,
-                        bgcolor=ft.Colors.AMBER,
-                        icon_size=28,
-                        on_click=lambda _: go_menu(),
-                    ),
+                ft.Row(
+                    alignment="spaceBetween",
+                    controls=[
+                        ft.Container(
+                            alignment=ft.alignment.center_left,
+                            padding=10,
+                            content=ft.IconButton(
+                                icon=ft.Icons.ARROW_BACK,
+                                icon_color=ft.Colors.BLACK,
+                                bgcolor=ft.Colors.AMBER,
+                                icon_size=28,
+                                on_click=lambda _: page.go(last_route),
+                            ),
+                        ),
+                        ft.Container(
+                            alignment=ft.alignment.center_right,
+                            padding=10,
+                            content=ft.IconButton(
+                                icon=ft.Icons.RESTAURANT_MENU,
+                                icon_color=ft.Colors.BLACK,
+                                bgcolor=ft.Colors.AMBER,
+                                icon_size=28,
+                                on_click=lambda _: go_cardapio(),
+                            ),
+                        ),
+                    ],
                 ),
             ],
         )
 
-    def editar_usuario_view():
+    def perfil_view(page, api_request, go_menu, go_pedidos):
+        import asyncio
         user = page.session.get("user") or {}
-        nome = ft.TextField(label="Nome", value=user.get("nome", ""))
-        telefone = ft.TextField(label="Telefone", value=user.get("telefone", ""))
-        email = ft.TextField(label="Email", value=user.get("email", ""))
-        senha = ft.TextField(label="Senha", password=True, can_reveal_password=True)
+        editing_global = {"on": False}
+        dirty = {"changed": False}
+        fields = {}
 
-        def salvar(e):
-            payload = {"nome": nome.value, "telefone": telefone.value, "email": email.value}
-            if senha.value.strip():
-                payload["senha"] = senha.value.strip()
-            st, res = api_request("PUT", "/editar/usuario/logado", payload)
-            if st == 200:
-                page.session.set("user", res.get("usuario", payload))
+        # --- Helpers ---
+        def atualizar_sessao_e_ui(novo_usuario):
+            page.session.set("user", novo_usuario)
             page.update()
 
-        return ft.View(
-            "/editar_usuario",
-            controls=[
-                nome, telefone, email, senha,
-                ft.ElevatedButton("Salvar", on_click=salvar),
-                ft.TextButton("Voltar", on_click=lambda _: go_menu())
-            ]
+        def patch_usuario(payload):
+            st, res = api_request("PUT", "/editar/usuario/logado", payload)
+            return st, res
+
+        # --- Campo com edição inline ---
+        def make_field(key, label, value, password=False, placeholder=""):
+            display_txt = ft.Text(value or "-", size=14, color="black")
+            tf = ft.TextField(
+                value=value or "",
+                visible=False,
+                password=password,
+                can_reveal_password=(password is True),
+                width=280,  # fixado, menor para não empurrar ícone
+                height=40,
+                border_color="#cccccc",
+                bgcolor="#fffbe6",
+                color="black",
+                label=label,
+            )
+
+            pencil = ft.IconButton(
+                icon=ft.Icons.EDIT,
+                icon_color="orange",
+                tooltip=f"Editar {label}",
+                style=ft.ButtonStyle(shape=ft.RoundedRectangleBorder(radius=6))
+            )
+
+            def enter_edit_mode(e):
+                tf.visible = True
+                display_txt.visible = False
+                pencil.icon = ft.Icons.SAVE_ALT  # ícone de salvar temporário
+                pencil.icon_color = "#4CAF50"
+                pencil.tooltip = f"Salvar {label}"
+                page.update()
+
+            def save_field(e):
+                new_val = tf.value.strip()
+                display_txt.value = new_val or "-"
+                tf.visible = False
+                display_txt.visible = True
+
+                # ícone de check breve
+                pencil.icon = ft.Icons.CHECK_CIRCLE
+                pencil.icon_color = "#4CAF50"
+                pencil.tooltip = "Campo salvo!"
+                page.update()
+
+                async def revert_after_delay():
+                    await asyncio.sleep(1)
+                    pencil.icon = ft.Icons.EDIT
+                    pencil.icon_color = "orange"
+                    pencil.tooltip = f"Editar {label}"
+                    page.update()
+
+                page.run_task(revert_after_delay)
+                dirty["changed"] = True
+
+            def on_pencil_click(e):
+                if tf.visible:
+                    save_field(e)
+                else:
+                    enter_edit_mode(e)
+
+            pencil.on_click = on_pencil_click
+
+            container = ft.Row(
+                [
+                    ft.Container(
+                        content=ft.Column(
+                            [ft.Text(label, size=12, color="#444"), display_txt, tf],
+                            spacing=2
+                        ),
+                        width=300
+                    ),
+                    pencil,
+                ],
+                alignment="spaceBetween",
+                vertical_alignment="center",
+                spacing=8,
+            )
+            fields[key] = {"display": display_txt, "tf": tf, "pencil": pencil, "label": label}
+            return container
+
+        # --- Campos ---
+        nome_row = make_field("nome", "Nome completo", user.get("nome", ""))
+        tel_row = make_field("telefone", "Telefone", user.get("telefone", ""))
+        email_row = make_field("email", "E-mail", user.get("email", ""))
+        senha_tf = ft.TextField(label="Nova senha", password=True, can_reveal_password=True, visible=False, width=280)
+
+        def toggle_senha(e):
+            senha_tf.visible = not senha_tf.visible
+            page.update()
+
+        trocar_senha_btn = ft.TextButton(
+            "Alterar senha",
+            on_click=toggle_senha,
+            style=ft.ButtonStyle(color="orange"),
         )
 
+        # --- Campo de senha ---
+        senha_tf = ft.TextField(
+            label="Nova senha",
+            password=True,
+            can_reveal_password=True,
+            visible=False,
+            width=320,
+            height=42,
+            border_color="#cccccc",
+            bgcolor="#fffbe6",
+            color="black",
+        )
+
+        # Ícone de salvar senha (só aparece quando campo está ativo)
+        salvar_senha_icon = ft.IconButton(
+            icon=ft.Icons.SAVE_ALT,
+            icon_color="#4CAF50",
+            tooltip="Salvar nova senha",
+            visible=False,
+        )
+
+        def toggle_senha(e):
+            senha_tf.visible = not senha_tf.visible
+            salvar_senha_icon.visible = senha_tf.visible
+            page.update()
+
+        def salvar_senha(e):
+            nova_senha = senha_tf.value.strip()
+            if not nova_senha:
+                page.snack_bar = ft.SnackBar(ft.Text("Digite uma nova senha!"), bgcolor="#FF9800")
+                page.snack_bar.open = True
+                page.update()
+                return
+
+            st, res = patch_usuario({"senha": nova_senha})
+            if st == 200:
+                senha_tf.value = ""
+                senha_tf.visible = False
+                salvar_senha_icon.visible = False
+                page.snack_bar = ft.SnackBar(ft.Text("Senha atualizada com sucesso!"), bgcolor="#4CAF50")
+            else:
+                page.snack_bar = ft.SnackBar(ft.Text("Falha ao atualizar senha."), bgcolor="#FF9800")
+
+            page.snack_bar.open = True
+            page.update()
+
+        salvar_senha_icon.on_click = salvar_senha
+
+        trocar_senha_btn = ft.TextButton(
+            "Alterar senha",
+            on_click=toggle_senha,
+            style=ft.ButtonStyle(color="orange"),
+        )
+
+        # Container de senha, botão e ícone centralizados
+        senha_container = ft.Column(
+            [
+                ft.Container(content=trocar_senha_btn, alignment=ft.alignment.center),
+                ft.Container(content=senha_tf, alignment=ft.alignment.center),
+                ft.Container(content=salvar_senha_icon, alignment=ft.alignment.center),
+            ],
+            horizontal_alignment="center",
+            spacing=8,
+        )
+
+        # --- Modo edição global ---
+        def entrar_modo_edicao_global():
+            editing_global["on"] = True
+            for k, ref in fields.items():
+                ref["tf"].visible = True
+                ref["display"].visible = False
+                ref["pencil"].visible = False
+            save_btn.visible = True
+            cancel_btn.visible = True
+            edit_btn.visible = False
+            page.update()
+
+        def cancelar_edicao(e):
+            editing_global["on"] = False
+            dirty["changed"] = False
+            sess = page.session.get("user") or {}
+            for k, ref in fields.items():
+                val = sess.get(k, "")
+                ref["tf"].value = val
+                ref["display"].value = val or "-"
+                ref["tf"].visible = False
+                ref["display"].visible = True
+                ref["pencil"].visible = True
+            senha_tf.value = ""
+            senha_tf.visible = False
+            save_btn.visible = False
+            cancel_btn.visible = False
+            edit_btn.visible = True
+            page.update()
+
+        def salvar_tudo(e):
+            payload = {}
+            for k, ref in fields.items():
+                payload[k] = ref["tf"].value.strip()
+            if senha_tf.visible and senha_tf.value.strip():
+                payload["senha"] = senha_tf.value.strip()
+            try:
+                st, res = patch_usuario(payload)
+                if st == 200:
+                    novo = res.get("usuario", payload)
+                    sess = page.session.get("user") or {}
+                    sess.update(novo)
+                    atualizar_sessao_e_ui(sess)
+                    page.snack_bar = ft.SnackBar(ft.Text("Perfil atualizado com sucesso"), bgcolor="#4CAF50")
+                    page.snack_bar.open = True
+                    cancelar_edicao(e)
+                else:
+                    page.snack_bar = ft.SnackBar(ft.Text("Falha ao atualizar."), bgcolor="#FF9800")
+                    page.snack_bar.open = True
+            except Exception as ex:
+                page.snack_bar = ft.SnackBar(ft.Text(f"Erro: {ex}"), bgcolor="#FF9800")
+                page.snack_bar.open = True
+            page.update()
+
+        # --- Botões ---
+        edit_btn = ft.ElevatedButton("Editar perfil", icon=ft.Icons.EDIT,
+                                     on_click=lambda e: entrar_modo_edicao_global(),
+                                     bgcolor="orange", color="white")
+        save_btn = ft.ElevatedButton("Salvar", icon=ft.Icons.CHECK, on_click=salvar_tudo, visible=False,
+                                     bgcolor="#4CAF50", color="white")
+        cancel_btn = ft.ElevatedButton("Cancelar", icon=ft.Icons.CANCEL, on_click=cancelar_edicao, visible=False,
+                                       bgcolor="#F44336", color="white")
+
+        pedidos_btn = ft.ElevatedButton("Meus Pedidos", icon=ft.Icons.RECEIPT_LONG,
+                                        on_click=lambda e: go_pedidos(),
+                                        bgcolor="orange", color="white")
+        voltar_btn = ft.TextButton("Voltar", on_click=lambda e: go_menu(), style=ft.ButtonStyle(color="#555"))
+
+        # --- Layout principal ---
+        info_card = ft.Card(
+            content=ft.Container(
+                content=ft.Column(
+                    [
+                        ft.Text("Minha Conta", size=22, weight="bold", color="black"),
+                        ft.Text(user.get("email", ""), size=13, color="#555"),
+                        ft.Row([edit_btn, save_btn, cancel_btn], alignment="center", spacing=12),
+                        ft.Divider(height=25),
+                        nome_row,
+                        ft.Divider(),
+                        tel_row,
+                        ft.Divider(),
+                        email_row,
+                        ft.Divider(),
+                        senha_container,
+
+                    ],
+                    horizontal_alignment="center",
+                    spacing=12,
+                ),
+                padding=20,
+                width=400,
+                bgcolor="white",
+                border_radius=12,
+                shadow=ft.BoxShadow(blur_radius=12, spread_radius=1, color=ft.Colors.with_opacity(0.2, "black")),
+            ),
+            elevation=0,
+        )
+
+        actions_row = ft.Row(
+            [pedidos_btn],
+            alignment="center",
+            spacing=0,
+        )
+
+        def inicializar_campos():
+            sess = page.session.get("user") or {}
+            for k, ref in fields.items():
+                val = sess.get(k, "")
+                ref["display"].value = val or "-"
+                ref["tf"].value = val or ""
+
+        inicializar_campos()
+
+        return ft.View(
+            "/perfil",
+            controls=[
+                ft.Container(
+                    bgcolor="#f5f5f5",
+                    expand=True,
+                    content=ft.Column(
+                        [
+                            ft.Container(
+                                content=info_card,
+                                alignment=ft.alignment.center,
+                                padding=ft.padding.only(top=40),
+                            ),
+                            ft.Container(
+                                content=actions_row,
+                                padding=ft.padding.only(top=10, bottom=10),
+                            ),
+
+                            # botão de voltar centralizado no rodapé
+                            ft.Container(
+                                alignment=ft.alignment.center,
+                                padding=ft.padding.only(bottom=25, top=20),
+                                content=ft.IconButton(
+                                    icon=ft.Icons.ARROW_BACK,
+                                    icon_color=ft.Colors.BLACK,
+                                    bgcolor="orange",
+                                    icon_size=32,
+                                    on_click=lambda _: go_cardapio(),
+                                ),
+                            ),
+                        ],
+                        horizontal_alignment="center",
+                        spacing=16,
+                        alignment="spaceBetween",  # garante espaçamento entre topo e base
+                    ),
+                )
+            ],
+            vertical_alignment="center",
+            horizontal_alignment="center",
+        )
     def comprar_view(item_id):
         """Tela de compra (único produto ou carrinho inteiro)."""
         user_carrinho = page.session.get("carrinho") or []
@@ -1048,8 +1528,14 @@ def main(page: ft.Page):
     def go_configs(): page.go("/configs")
     def go_cardapio(): page.go("/cardapio")
     def go_carrinho(): page.go("/carrinho")
-    def go_pedidos(): page.go("/pedidos")
-    def go_editar_usuario(): page.go("/editar_usuario")
+    def go_pedidos():
+        if page.route.startswith("/comprar") or page.route == "/pagamento":
+            page.session.set("last_route", "/cardapio")
+        else:
+            page.session.set("last_route", page.route)
+
+        page.go("/pedidos")
+    def go_editar_usuario(): page.go("/perfil_view")
     def go_comprar(pid): page.go(f"/comprar/{pid}")
 
     def route_change(route):
@@ -1057,11 +1543,9 @@ def main(page: ft.Page):
         page.floating_action_button = None
 
         if page.route == "/login":
-            page.views.clear(); page.views.append(login_view())
+            page.views.clear(); page.views.append(login_view(page, go_cardapio, go_cadastro, api_request))
         elif page.route == "/cadastro":
-            page.views.clear(); page.views.append(cadastro_view())
-        elif page.route == "/configs":
-            page.views.clear(); page.views.append(configs_view())
+            page.views.clear(); page.views.append(cadastro_view(page, go_login, api_request))
         elif page.route == "/menu":
             page.views.clear(); page.views.append(menu_view())
         elif page.route == "/cardapio":
@@ -1070,8 +1554,8 @@ def main(page: ft.Page):
             page.views.clear(); page.views.append(carrinho_view())
         elif page.route == "/pedidos":
             page.views.clear(); page.views.append(pedidos_view())
-        elif page.route == "/editar_usuario":
-            page.views.clear(); page.views.append(editar_usuario_view())
+        elif page.route == "/perfil_view":
+            page.views.clear(); page.views.append(perfil_view(page, api_request, go_menu, go_pedidos))
         elif page.route.startswith("/comprar/"):
             pid = page.route.split("/")[-1]
             item_id = int(pid) if pid.isdigit() else pid  # aceita "carrinho" também
